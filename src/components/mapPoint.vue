@@ -1,5 +1,11 @@
 <template>
-  <a ref="pointEl" :href="point.link" @click.prevent="select">
+  <a
+    ref="pointEl"
+    class="point"
+    :class="{ 'point-selected': isSelected }"
+    :href="point.link"
+    @click.prevent="select"
+  >
     <circle
       :cx="coords.point.x"
       :cy="coords.point.y"
@@ -28,6 +34,10 @@ export default {
     point: {
       type: Object,
       default: null,
+    },
+    isSelected: {
+      type: Boolean,
+      default: false,
     },
   },
   mounted() {
@@ -71,3 +81,9 @@ export default {
   },
 };
 </script>
+
+<style lang="scss" scoped>
+.point-selected {
+  opacity: 1 !important;
+}
+</style>

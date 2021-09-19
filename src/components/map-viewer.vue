@@ -1,5 +1,8 @@
 <template>
-  <div class="map-container">
+  <div
+    class="map-container"
+    :class="{ 'map-container--setting-open': dialogVisible }"
+  >
     <div ref="mapViewer" v-html="svgStr"></div>
     <g ref="points" class="points">
       <template v-if="svgEl">
@@ -8,11 +11,30 @@
           :key="index"
           :point="point"
           :svg-el="svgEl"
+          :is-selected="index === selectedPointIndex"
           @select="openSettingPoint"
         />
       </template>
     </g>
-    <el-drawer title="Настройки" :visible.sync="dialogVisible">
+    <el-button class="save-svg" type="success" @click="saveSVG"
+      >Сохранить SVG
+    </el-button>
+    <modal name="result-modal" draggable height="auto">
+      <el-row>
+        <el-col>
+          <el-link type="success" :href="svgResultUrl" download
+            >Скачать SVG</el-link
+          >
+        </el-col>
+      </el-row>
+    </modal>
+    <modal
+      name="setting-modal"
+      draggable
+      height="auto"
+      @opened="dialogVisible = true"
+      @closed="dialogVisible = false"
+    >
       <template v-if="selectedPoint">
         <el-row>
           <el-col>
@@ -78,8 +100,13 @@
             ></el-color-picker>
           </el-col>
         </el-row>
+        <el-row>
+          <el-col>
+            <el-button type="danger" @click="removePoint">Удалить</el-button>
+          </el-col>
+        </el-row>
       </template>
-    </el-drawer>
+    </modal>
   </div>
 </template>
 
@@ -105,7 +132,13 @@ export default {
       svgEl: null,
       selectedPoint: null,
       timerSaveID: null,
+      svgResultUrl: '',
     };
+  },
+  computed: {
+    selectedPointIndex() {
+      return this.points.findIndex((point) => point === this.selectedPoint);
+    },
   },
   created() {
     this.startTimerSaveProgress();
@@ -121,20 +154,12 @@ export default {
   methods: {
     addEventClickMap() {
       this.svgEl.addEventListener('click', (e) => {
-        this.addPoint(e.clientX, e.clientY);
+        if (!this.$refs.points.contains(e.target)) {
+          this.addPoint(e.clientX, e.clientY);
+        }
       });
     },
     addPoint(x, y) {
-      // const NS = this.svgEl.getAttribute('xmlns');
-      //
-      // const linkEl = document.createElementNS(NS, 'a');
-      // const circleEl = document.createElementNS(NS, 'circle');
-      // const textEl = document.createElementNS(NS, 'text');
-      //
-      // linkEl.appendChild(circleEl);
-      // linkEl.appendChild(textEl);
-      // this.svgEl.appendChild(linkEl);
-
       const pointObj = {
         x: 0,
         y: 0,
@@ -174,7 +199,7 @@ export default {
     },
     openSettingPoint(point) {
       this.selectedPoint = point;
-      this.dialogVisible = true;
+      this.showSettingModal();
     },
     startTimerSaveProgress() {
       this.timerSaveID = setInterval(() => {
@@ -185,15 +210,41 @@ export default {
         );
       }, 1000);
     },
-    // movePoint(x, y, pointObj) {
-    //   pointObj.move(x, y);
-    // },
-    // updateTextPoint(text, pointObj) {
-    //   pointObj.setText(text);
-    // },
-    // updateLinkPoint(link, pointObj) {
-    //   pointObj.setLink(link);
-    // },
+    showSettingModal() {
+      this.$modal.show('setting-modal');
+    },
+    hideSettingModal() {
+      this.$modal.hide('setting-modal');
+    },
+    showResultModal() {
+      this.$modal.show('result-modal');
+    },
+    removePoint() {
+      const indexPoint = this.points.findIndex(
+        (point) => point === this.selectedPoint
+      );
+
+      if (indexPoint !== -1) {
+        this.$delete(this.points, indexPoint);
+        this.hideSettingModal();
+      }
+    },
+    saveSVG() {
+      // const svgStr = JSON.stringify(this.svgEl);
+      const div = document.createElement('div');
+      div.appendChild(this.svgEl.cloneNode(true));
+
+      const blob = new Blob([div.innerHTML], { type: 'image/svg+xml' });
+
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        this.svgResultUrl = e.target.result;
+        this.showResultModal();
+      };
+
+      reader.readAsDataURL(blob);
+    },
   },
 };
 </script>
@@ -201,13 +252,25 @@ export default {
 <style lang="scss">
 .map-container {
   width: 100%;
+
+  &--setting-open {
+    .point {
+      opacity: 0.5;
+    }
+  }
 }
 
-.el-drawer__body {
-  padding: 20px;
+.vm--modal {
+  padding: 30px;
 
   .el-col {
     margin-bottom: 15px;
   }
+}
+
+.save-svg {
+  position: fixed;
+  top: 20px;
+  right: 20px;
 }
 </style>
